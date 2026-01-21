@@ -6,6 +6,7 @@ This project demonstrates a simplified batch processing system for ingesting and
 
 ## Folder Structure:
 
+<pre>
 reg-batch-v1/
 │
 ├── app/
@@ -19,6 +20,7 @@ reg-batch-v1/
 │
 ├── README.md
 └── .gitignore
+</pre>
 
 ## Problem Statement
 
