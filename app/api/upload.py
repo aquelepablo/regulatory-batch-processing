@@ -1,12 +1,16 @@
 """
 Receives upload, stores temp file, calls orchestrator, returns job_id
 """
-from fastapi import File, UploadFile
+from fastapi import APIRouter, File, UploadFile
 from app.processing.orchestrator import process_file
 import os
 
+
+router = APIRouter()
+
+@router.post("/upload")
 async def upload_file(file: UploadFile = File(...)) -> dict:
-    file_path = save_temp_file(file)
+    file_path = await save_temp_file(file)
     job_id = process_file(file_path)
     return {"job_id": job_id}
 
