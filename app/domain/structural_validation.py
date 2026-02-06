@@ -3,26 +3,27 @@ import psycopg2
 
 def validate_structure(file_path: str) -> tuple[bool, str | None]:
     print('validate_structure')
-    is_valid = True
-    error_message = ''
-
+     
     is_valid, error_message = validate_size(file_path)
     if not is_valid:
         return False, error_message
 
 
-    with open(file_path, 'r') as file:
-        content = file.readlines()
-        
-        print(content)
-        
-        is_valid, error_message = validate_header(content[0].strip())
-        if not is_valid:
-            return False, error_message
-        
-        is_valid, error_message = validate_trailer(content[len(content) - 1].strip())
-        if not is_valid:
-            return False, error_message
+    with open(file_path, "r") as file:
+        first_line = next(file).strip()
+        last_line = None
+
+        #TODO: For bigger files, best to go backwards
+        for line in file:
+            last_line = line.strip()
+
+    is_valid, error_message = validate_header(first_line)
+    if not is_valid:
+        return False, error_message
+    
+    is_valid, error_message = validate_trailer(last_line)
+    if not is_valid:
+        return False, error_message
 
     return True, None
 

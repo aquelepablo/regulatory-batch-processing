@@ -1,3 +1,6 @@
+__pycache__/
+*.pyc
+.env
 thinking_db.md
 DEV_STEPS.md
 MENTOR.md
