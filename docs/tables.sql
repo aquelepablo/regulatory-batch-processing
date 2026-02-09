@@ -1,8 +1,5 @@
-/*
-DROP TABLE validation_error;
-DROP TABLE raw_record;
-DROP TABLE processing_job;
-*/
+-- Database schema and sample data for Regulatory Batch Processing System (V1)
+-- This script creates core tables and inserts example records for validation and testing.
 
 CREATE TABLE processing_job(
 	job_id 				BIGSERIAL PRIMARY KEY,
@@ -62,10 +59,6 @@ CREATE TABLE validation_error(
 			
 );
 
-SELECT * FROM processing_job;
-SELECT * FROM raw_record;
-SELECT * FROM validation_error;
-
 --SAMPLE INSERTS
 DO $$
 DECLARE v_job_id BIGINT;
@@ -91,3 +84,13 @@ BEGIN
 	INSERT INTO raw_record(job_id, line_number, raw_content) VALUES(v_job_id, 5, 'asdf') RETURNING raw_record_id INTO v_raw_record_id;
 
 END $$
+
+/*
+DROP TABLE validation_error;
+DROP TABLE raw_record;
+DROP TABLE processing_job;
+
+SELECT * FROM processing_job;
+SELECT * FROM raw_record;
+SELECT * FROM validation_error;
+*/

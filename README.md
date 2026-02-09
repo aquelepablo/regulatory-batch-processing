@@ -27,7 +27,7 @@ reg-batch-v1/
 Many regulatory and enterprise systems still rely on large batch files to exchange and process critical data.
 Unreliable validations or memory-dependent processing of sensitive, critical files may lead to data inconsistencies,
 financial losses, or even regulatory risks.
-In this kind of processing, small errors — such as a misplaced character — are often hard to detect, difficult to trace,
+In this kind of processing, small errors - such as a misplaced character - are often hard to detect, difficult to trace,
 and can cause significant downstream issues.
 
 ## Scope (V1)
@@ -40,6 +40,8 @@ and can cause significant downstream issues.
 4. Receive batch files via a minimal HTTP API
 5. Track processing status per job
 6. Generate a basic processing summary
+7. Perform SQL-based business validations on detail records
+8. Differentiate between fatal (file-level) and non-fatal (record-level) validation errors
 
 ### Out of Scope
 
@@ -59,6 +61,8 @@ Raw data is persisted early in the process to guarantee traceability and auditab
 
 Validation results are recorded at both record and job levels. Python consolidates these outcomes to determine the final processing state, enabling detailed error analysis and a clear, auditable result for each processed file.
 
+Business validations may both validate data and persist validation errors directly in the database, returning only aggregated results to the application layer.
+
 The architecture intentionally prioritizes data integrity, auditability and clarity over architectural complexity or real-time processing concerns.
 
 The validation process is intentionally split into file-level (fatal) and record-level (non-fatal) validations.
@@ -67,7 +71,7 @@ File-level inconsistencies (e.g. header/trailer mismatches) cause the entire job
 ## Key Design Decisions
 
 - **Job-oriented processing model**: each file is treated as an explicit processing job with a well-defined lifecycle and status transitions.
-- **Raw data immutability**: all file lines (header, detail, trailer) are persisted exactly as received to support auditability and reprocessing.
+- **Raw data immutability**: all file lines (inclusing header, detail, trailer) are persisted exactly as received to support auditability and reprocessing.
 - **SQL-first business validation**: data consistency and business rules are validated using set-based SQL operations, avoiding row-by-row processing in Python.
 - **Early rejection for file-level errors**: structural and file consistency errors immediately reject the job, preventing unnecessary downstream processing.
 - **Minimal orchestration layer**: Python coordinates the workflow and lifecycle but does not implement heavy business logic.
@@ -82,3 +86,29 @@ File-level inconsistencies (e.g. header/trailer mismatches) cause the entire job
 - Improve operational metrics and monitoring.
 
 ## How to Run (Local)
+
+### Requirements
+
+- Python 3.11+
+- PostgreSQL
+- pip / virtualenv
+
+### Setup
+
+1. Clone the repository
+2. Create a virtual environment and install dependencies
+3. Create a `.env` file based on `.env.example`
+4. Create the database schema using the script in `docs/tables.sql`
+5. Run the application
+
+```bash
+uvicorn app.main:app --reload
+```
+
+### Usage
+
+**POST /upload** - upload a batch file and start processing
+
+**GET /status/{job_id}** - retrieve current job status
+
+**FILE TO USE** - Use example file `docs/PAYMENTS_ACME_20250315_001.dat`
