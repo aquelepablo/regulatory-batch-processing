@@ -9,17 +9,15 @@ get_job_error_count
 from sqlite3 import DatabaseError
 import psycopg2
 
+from app.persistence.db import get_connection
+
 #TODO: FIX USER ON DB CONNECTION
-def insert_job(file_name) -> int:
+def insert_job(file_name, job_status) -> int:
     print("insert_job")
     
     try:
-        conn = psycopg2.connect(
-            dbname="regulatory_batch",
-            user="postgres",
-            password="1234",
-            host="localhost"
-        )
+
+        conn = get_connection()
 
         with conn:
             with conn.cursor() as curs:
@@ -27,10 +25,10 @@ def insert_job(file_name) -> int:
                 curs.execute(
                     """
                     INSERT INTO processing_job(file_name, received_at, status) 
-                    VALUES(%s, NOW(), 'RECEIVED') 
+                    VALUES(%s, NOW(), %s) 
                     RETURNING job_id
                     """,
-                    (file_name,)
+                    (file_name, job_status)
                 )
 
                 job_id = curs.fetchone()[0]
@@ -42,16 +40,11 @@ def insert_job(file_name) -> int:
         raise RuntimeError(f"Database error while inserting job: {e}")
 
 
-def mark_job_as_processing(job_id) -> None:
+def mark_job_as_processing(job_id, job_status) -> None:
     print("mark_job_as_processing")
 
     try:
-        conn = psycopg2.connect(
-            dbname="regulatory_batch",
-            user="postgres",
-            password="1234",
-            host="localhost"
-        )
+        conn = get_connection()
 
         with conn:
             with conn.cursor() as curs:
@@ -60,10 +53,10 @@ def mark_job_as_processing(job_id) -> None:
                     """
                     UPDATE processing_job
                     SET started_at = NOW(),
-                        status = 'PROCESSING'
+                        status = %s
                     WHERE job_id = %s
                     """,
-                    (job_id,)
+                    (job_status, job_id,)
                 )
 
                 if curs.rowcount == 0:
@@ -77,12 +70,7 @@ def mark_job_as_processing(job_id) -> None:
 def mark_job_as_rejected(job_id, final_status, error_message) -> None:
     print("mark_job_as_rejected")
     try:
-        conn = psycopg2.connect(
-            dbname="regulatory_batch",
-            user="postgres",
-            password="1234",
-            host="localhost"
-        )
+        conn = get_connection()
 
         with conn:
             with conn.cursor() as curs:
@@ -111,12 +99,8 @@ def update_job_counters(conn, job_id, total_records, total_errors) -> None:
 def finalize_job(job_id, final_status) -> None:
     print("finalize_job")
     try:
-        conn = psycopg2.connect(
-            dbname="regulatory_batch",
-            user="postgres",
-            password="1234",
-            host="localhost"
-        )
+
+        conn = get_connection()
 
         with conn:
             with conn.cursor() as curs:

@@ -1,16 +1,11 @@
 import psycopg2
-
+from app.persistence.db import get_connection
 
 def insert_raw_record(job_id: int, line_number: int, raw_content: str, parsed_ok: bool):
     print("insert_raw_record")
     
     try:
-        conn = psycopg2.connect(
-            dbname="regulatory_batch",
-            user="postgres",
-            password="1234",
-            host="localhost"
-        )
+        conn = get_connection()
 
         with conn:
             with conn.cursor() as curs:
