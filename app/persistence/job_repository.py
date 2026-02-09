@@ -6,6 +6,7 @@ update_job_counters
 get_job_error_count
 """
 
+from os import error
 from sqlite3 import DatabaseError
 import psycopg2
 
@@ -96,6 +97,44 @@ def mark_job_as_rejected(job_id, final_status, error_message) -> None:
 def update_job_counters(conn, job_id, total_records, total_errors) -> None:
     pass
 
+def finalize_job_with_errors(job_id, final_status, total_errors, error_message) -> None:
+    print("finalize_job_with_errors")
+    try:
+        conn = get_connection()
+
+        with conn:
+            with conn.cursor() as curs:
+
+                sql =   """
+                        UPDATE processing_job
+                        SET finished_at = NOW(),
+                            status = %(status)s,
+                            total_errors = %(total_errors)s,
+                            general_error_message = %(error_message)s
+                        WHERE job_id = %(job_id)s
+                        """
+                params = {
+                            "status": final_status,
+                            "total_errors": total_errors,
+                            "error_message": error_message,
+                            "job_id": job_id
+                        }
+                curs.execute(sql, params)
+
+                if curs.rowcount == 0:
+                    raise ValueError(f"Job {job_id} not found")
+
+    except (psycopg2.DatabaseError) as e:
+        full_sql = curs.mogrify(sql, params).decode("utf-8")
+        raise RuntimeError(
+            f"Database error while updating job {job_id}: {e}\n"
+            f"Query: {full_sql}"
+        )
+    except (Exception) as e:
+        raise RuntimeError(f"Database error while updating job {job_id}: {e}")
+
+
+
 def finalize_job(job_id, final_status) -> None:
     print("finalize_job")
     try:
@@ -105,21 +144,26 @@ def finalize_job(job_id, final_status) -> None:
         with conn:
             with conn.cursor() as curs:
                 
-                curs.execute(
-                    """
+                sql = """
                     UPDATE processing_job
                     SET finished_at = NOW(),
                         status = %s
                     WHERE job_id = %s
-                    """,
-                    (final_status, job_id,)
-                )
+                    """
+                params = (final_status, job_id,)
+
+                curs.execute(sql, params)
 
                 if curs.rowcount == 0:
                     raise ValueError(f"Job {job_id} not found")
 
-            # a more robust way of handling errors
-    except (Exception, psycopg2.DatabaseError) as e:
+    except (psycopg2.DatabaseError) as e:
+        full_sql = curs.mogrify(sql, params).decode("utf-8")
+        raise RuntimeError(
+            f"Database error while updating job {job_id}: {e}\n"
+            f"Query: {full_sql}"
+        )
+    except (Exception) as e:
         raise RuntimeError(f"Database error while updating job {job_id}: {e}")
 
 def get_job_error_count(conn, job_id) -> int:

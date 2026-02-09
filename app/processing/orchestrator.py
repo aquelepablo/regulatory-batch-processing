@@ -1,6 +1,6 @@
 from random import random
 
-from app.domain.business_validation import validate_trailer
+from app.domain.business_validation import validate_detail, validate_trailer
 from app.domain.structural_validation import validate_structure
 import app.persistence.job_repository as job_repository
 from app.persistence.validation_error_repository import insert_validation_error
@@ -22,7 +22,10 @@ def process_file(file_path: str) -> int:
     
     job_repository.mark_job_as_processing(job_id, JobStatus.PROCESSING.value)
 
-    file_is_valid, error_message = validate_structure(file_path)
+    error = validate_structure(file_path)
+    if error:
+        job_repository.mark_job_as_rejected(job_id, JobStatus.REJECTED.value, error)
+        return job_id
 
     if not run_structural_phase(file_path, job_id):
         return job_id
@@ -56,8 +59,11 @@ def run_business_validation_phase(job_id) -> bool:
         job_repository.mark_job_as_rejected(job_id, JobStatus.REJECTED.value, error_message) 
         return False
     
-    #TODO: Validate Detail
-
+    errors = validate_detail(job_id)
+    if errors > 0:
+        job_repository.finalize_job_with_errors(job_id, JobStatus.PROCESSED_WITH_ERRORS.value, errors, 'Detail lines with inconsistences')
+        return False
+    
     return True
 
 def get_job_status(job_id):

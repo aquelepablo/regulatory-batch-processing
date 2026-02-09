@@ -34,6 +34,6 @@ async def save_temp_file(file: UploadFile) -> str:
         
     return full_path
 
-@router.get("/status/<job_id>")
-def get_status(job_id):
+@router.get("/status/{job_id}")
+def get_status(job_id: int):
     return get_job_status(job_id)
