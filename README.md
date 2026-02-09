@@ -61,8 +61,24 @@ Validation results are recorded at both record and job levels. Python consolidat
 
 The architecture intentionally prioritizes data integrity, auditability and clarity over architectural complexity or real-time processing concerns.
 
+The validation process is intentionally split into file-level (fatal) and record-level (non-fatal) validations.
+File-level inconsistencies (e.g. header/trailer mismatches) cause the entire job to be rejected, while record-level errors are accumulated and reported without interrupting processing.
+
 ## Key Design Decisions
 
+- **Job-oriented processing model**: each file is treated as an explicit processing job with a well-defined lifecycle and status transitions.
+- **Raw data immutability**: all file lines (header, detail, trailer) are persisted exactly as received to support auditability and reprocessing.
+- **SQL-first business validation**: data consistency and business rules are validated using set-based SQL operations, avoiding row-by-row processing in Python.
+- **Early rejection for file-level errors**: structural and file consistency errors immediately reject the job, preventing unnecessary downstream processing.
+- **Minimal orchestration layer**: Python coordinates the workflow and lifecycle but does not implement heavy business logic.
+
 ## Natural Evolutions (V2+)
+
+- Introduce record-level business validations (e.g. amount format, account checksum).
+- Externalize validation error codes and messages.
+- Support multiple file formats.
+- Add retry and idempotency controls.
+- Persist parsed/normalized records for downstream processing.
+- Improve operational metrics and monitoring.
 
 ## How to Run (Local)

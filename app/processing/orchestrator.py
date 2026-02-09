@@ -59,3 +59,18 @@ def run_business_validation_phase(job_id) -> bool:
     #TODO: Validate Detail
 
     return True
+
+def get_job_status(job_id):
+    
+    job_status = job_repository.get_job_status(job_id)
+
+    if job_status:
+        return {
+            "job_id": job_id,
+            "status": job_status
+        }
+
+    return {
+            "job_id": job_id,
+            "status": "NOT_FOUND"
+        }

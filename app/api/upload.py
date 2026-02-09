@@ -2,7 +2,7 @@
 Receives upload, stores temp file, calls orchestrator, returns job_id
 """
 from fastapi import APIRouter, File, UploadFile
-from app.processing.orchestrator import process_file
+from app.processing.orchestrator import process_file, get_job_status
 import os
 
 
@@ -33,3 +33,7 @@ async def save_temp_file(file: UploadFile) -> str:
         f.write(uploaded_file)
         
     return full_path
+
+@router.get("/status/<job_id>")
+def get_status(job_id):
+    return get_job_status(job_id)

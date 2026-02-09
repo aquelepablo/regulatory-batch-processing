@@ -124,3 +124,32 @@ def finalize_job(job_id, final_status) -> None:
 
 def get_job_error_count(conn, job_id) -> int:
     pass
+
+def get_job_status(job_id) -> str | None:
+    print("get_job_status")
+    try:
+        conn = get_connection()
+
+        with conn:
+            with conn.cursor() as curs:
+                
+                curs.execute(
+                    """
+                    SELECT status FROM processing_job
+                    WHERE job_id = %s
+                    """,
+                    (job_id,)
+                )
+
+                row = curs.fetchone()[0]
+
+                if not row:
+                    return None
+                
+                return row
+
+            # a more robust way of handling errors
+    except (Exception, psycopg2.DatabaseError) as e:
+        raise RuntimeError(f"Database error while geting job {job_id} status: {e}")
+
+
