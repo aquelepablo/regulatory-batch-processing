@@ -1,4 +1,3 @@
-from app.persistence.db import get_connection
 from app.processing.file_reader import load_sql
 import psycopg2
 

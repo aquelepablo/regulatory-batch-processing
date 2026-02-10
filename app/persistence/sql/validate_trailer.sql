@@ -1,7 +1,6 @@
 WITH param AS (
 	SELECT %(job_id)s AS job_id
 ),
-),
 detail_amount AS (
 	SELECT 
 		SUBSTRING(raw_content, 12, 12) AS amount

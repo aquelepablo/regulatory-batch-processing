@@ -8,6 +8,7 @@ import os
 
 router = APIRouter()
 
+
 @router.post("/upload")
 async def upload_file(file: UploadFile = File(...)) -> dict:
     file_path = await save_temp_file(file)

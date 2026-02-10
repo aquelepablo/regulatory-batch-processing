@@ -1,10 +1,6 @@
 import psycopg2
 
-from app.persistence.db import get_connection
-
 def insert_validation_error(conn, job_id: int, error_type: str, error_message: str, raw_record_id: int | None = None, error_code: str | None = None) -> None:
-    print('insert_validation_error')
-
     cursor = conn.cursor()
     sql = """
         INSERT INTO validation_error(job_id, raw_record_id, error_type, error_code, error_message) 

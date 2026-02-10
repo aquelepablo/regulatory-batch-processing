@@ -1,11 +1,7 @@
-from sqlite3 import Cursor
 import psycopg2
 import psycopg2.extras
-from app.persistence.db import get_connection
 
 def insert_raw_record(conn, job_id: int, line_number: int, raw_content: str, parsed_ok: bool):
-    print("insert_raw_record")
-    
     cursor = conn.cursor()
 
     sql = """
@@ -28,8 +24,6 @@ def insert_raw_record(conn, job_id: int, line_number: int, raw_content: str, par
         )
 
 def persist_raw_records_batch(conn, records):
-    print("persist_raw_records_batch")
-    
     cursor = conn.cursor()
 
     try:

@@ -1,21 +1,7 @@
-"""
-Docstring for app.persistence.job_repository
-insert_job
-update_job_status
-update_job_counters
-get_job_error_count
-"""
-
-from os import error
-from sqlite3 import DatabaseError
 import psycopg2
-
-from app.persistence.db import get_connection
 
 #TODO: FIX USER ON DB CONNECTION
 def insert_job(conn, file_name, job_status) -> int:
-    print("insert_job")
-    
     cursor = conn.cursor()
 
     try:
@@ -42,8 +28,6 @@ def insert_job(conn, file_name, job_status) -> int:
         )
 
 def mark_job_as_processing(conn, job_id, job_status) -> None:
-    print("mark_job_as_processing")
-
     cursor = conn.cursor()
 
     try:
@@ -72,8 +56,6 @@ def mark_job_as_processing(conn, job_id, job_status) -> None:
     
 
 def mark_job_as_rejected(conn, job_id, final_status, error_message) -> None:
-    print("mark_job_as_rejected")
-    
     cursor = conn.cursor()
 
     try:
@@ -106,8 +88,6 @@ def update_job_counters(conn, job_id, total_records, total_errors) -> None:
     pass
 
 def finalize_job_with_errors(conn, job_id, final_status, total_errors, error_message) -> None:
-    print("finalize_job_with_errors")
-    
     cursor = conn.cursor()
     sql =   """
             UPDATE processing_job
@@ -142,7 +122,6 @@ def finalize_job_with_errors(conn, job_id, final_status, total_errors, error_mes
     )
 
 def finalize_job(conn, job_id, final_status) -> None:
-    print("finalize_job")
     cursor = conn.cursor()
     
     try:
@@ -172,31 +151,32 @@ def finalize_job(conn, job_id, final_status) -> None:
 def get_job_error_count(conn, job_id) -> int:
     pass
 
-def get_job_status(job_id) -> str | None:
-    print("get_job_status")
+def get_job_status(conn, job_id) -> str | None:
     try:
-        conn = get_connection()
+        cursor = conn.cursor()
 
-        with conn:
-            with conn.cursor() as curs:
-                
-                curs.execute(
-                    """
-                    SELECT status FROM processing_job
-                    WHERE job_id = %s
-                    """,
-                    (job_id,)
-                )
+        cursor.execute(
+            """
+            SELECT COALESCE(status, NULL) 
+            FROM processing_job
+            WHERE job_id = %s
+            """,
+            (job_id,)
+        )
 
-                row = curs.fetchone()[0]
+        if cursor.rowcount > 0:
+            row = cursor.fetchone()[0]
+            return row
 
-                if not row:
-                    return None
-                
-                return row
+        return None
 
-            # a more robust way of handling errors
-    except (Exception, psycopg2.DatabaseError) as e:
-        raise RuntimeError(f"Database error while geting job {job_id} status: {e}")
+    except (psycopg2.DatabaseError) as e:
+        raise RuntimeError(
+            f"""
+            Database error while SELECT processing_job 
+            job_id={job_id}
+            error={e}
+            """
+    )
 
 

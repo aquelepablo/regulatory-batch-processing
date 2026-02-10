@@ -1,12 +1,12 @@
-from random import random
-
+#from random import random
+from enum import Enum
 from app.domain.business_validation import validate_detail, validate_trailer
 from app.domain.structural_validation import validate_structure
 from app.persistence.db import get_connection
 import app.persistence.job_repository as job_repository
 from app.persistence.validation_error_repository import insert_validation_error
-from app.processing import file_reader
-from enum import Enum
+from app.processing.file_reader import stream_file_lines_buffer
+
 
 class JobStatus(Enum):
     RECEIVED = "RECEIVED"
@@ -17,8 +17,6 @@ class JobStatus(Enum):
 
 
 def process_file(file_path: str) -> int:
-    #print("process_file")
-
     conn = get_connection()
     job_id = None
 
@@ -37,7 +35,7 @@ def process_file(file_path: str) -> int:
             return job_id
 
         # Persist raw records (batch, transactional)
-        file_reader.stream_file_lines_buffer(conn, file_path, job_id)
+        stream_file_lines_buffer(conn, file_path, job_id)
 
         #Business validations
         result = run_business_validation_phase(conn, job_id)
@@ -111,8 +109,8 @@ def run_business_validation_phase(conn, job_id) -> dict:
 
 
 def get_job_status(job_id):
-    
-    job_status = job_repository.get_job_status(job_id)
+    conn = get_connection()
+    job_status = job_repository.get_job_status(conn, job_id)
 
     if job_status:
         return {

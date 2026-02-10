@@ -1,9 +1,6 @@
 import os
-import psycopg2
 
 def validate_structure(file_path: str) -> str | None:
-    print('validate_structure')
-     
     error_message = validate_size(file_path)
     if error_message:
         return error_message
@@ -12,7 +9,6 @@ def validate_structure(file_path: str) -> str | None:
         first_line = next(file).strip("\r\n")
         last_line = None
 
-        #TODO: For bigger files, best to go backwards
         for line in file:
             last_line = line.strip("\r\n")
 
@@ -27,8 +23,6 @@ def validate_structure(file_path: str) -> str | None:
     return None
 
 def validate_size(file_path: str)  -> str | None:
-    print('validate_size')
-    
     if not os.path.getsize(file_path) > 0:
         print('File is empty')
         return 'File empty'
@@ -36,15 +30,13 @@ def validate_size(file_path: str)  -> str | None:
     return None
 
 def validate_header(line: str) -> str | None:
-    print('validate_header', line)
     if len(line) < 30:
         return 'Header invalid'
     
     return None
 
 def validate_trailer(line: str) -> str | None:
-    print('validate_trailer', line)
-    if len(line) < 30:
+    if not line or len(line) < 30:
         return 'Trailler invalid'
 
     return None

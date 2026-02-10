@@ -3,8 +3,6 @@ from app.persistence.raw_record_repository import insert_raw_record, persist_raw
 
 #TODO: In V2, raw record persistence will be optimized using batched inserts or COPY.
 def stream_file_lines(conn, file_path: str, job_id: int):
-    print('stream_file_lines')
-
     line_parsed = False #No parse line for now
 
     with open(file_path, 'r') as file:
