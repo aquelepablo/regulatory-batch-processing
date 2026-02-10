@@ -2,6 +2,7 @@ from random import random
 
 from app.domain.business_validation import validate_detail, validate_trailer
 from app.domain.structural_validation import validate_structure
+from app.persistence.db import get_connection
 import app.persistence.job_repository as job_repository
 from app.persistence.validation_error_repository import insert_validation_error
 from app.processing import file_reader
@@ -17,54 +18,97 @@ class JobStatus(Enum):
 
 def process_file(file_path: str) -> int:
     #print("process_file")
+
+    conn = get_connection()
+    job_id = None
+
+    try:
+        conn.autocommit = False
+
+        job_id = job_repository.insert_job(conn, file_path, JobStatus.RECEIVED.value)
+        
+        job_repository.mark_job_as_processing(conn, job_id, JobStatus.PROCESSING.value)
+
+        # Structural validation (file-level, before DB load)
+        error = validate_structure(file_path)
+        if error:
+            job_repository.mark_job_as_rejected(conn, job_id, JobStatus.REJECTED.value, error)
+            conn.commit()
+            return job_id
+
+        # Persist raw records (batch, transactional)
+        file_reader.stream_file_lines_buffer(conn, file_path, job_id)
+
+        #Business validations
+        result = run_business_validation_phase(conn, job_id)
+        
+        if result["fatal"]:
+            job_repository.mark_job_as_rejected(conn, job_id, JobStatus.REJECTED.value, result["message"]) 
+        
+        elif result["errors"] > 0:
+            job_repository.finalize_job_with_errors(conn, job_id, JobStatus.PROCESSED_WITH_ERRORS.value, result["errors"], result["message"])
+        
+        else:
+            job_repository.finalize_job(conn, job_id, JobStatus.PROCESSED.value)
+
+        conn.commit()
+        return job_id 
+        
+    except Exception as e:
+        conn.rollback()
+
+        #best-effort mark as rejected
+        if job_id is not None:
+            try:
+                job_repository.mark_job_as_rejected(conn, job_id, JobStatus.REJECTED.value, str(e))
+                conn.commit()
+            except Exception:
+                pass
+        raise
     
-    job_id = job_repository.insert_job(file_path, JobStatus.RECEIVED.value)
+    finally:
+        conn.close()
+
+
+def run_business_validation_phase(conn, job_id) -> dict:
+    """
+    Returns:
+    {
+        fatal: bool,
+        errors: int,
+        message: str | None
+    }
+    """
     
-    job_repository.mark_job_as_processing(job_id, JobStatus.PROCESSING.value)
-
-    error = validate_structure(file_path)
-    if error:
-        job_repository.mark_job_as_rejected(job_id, JobStatus.REJECTED.value, error)
-        return job_id
-
-    if not run_structural_phase(file_path, job_id):
-        return job_id
-
-    file_reader.stream_file_lines(file_path, job_id)
-
-    if not run_business_validation_phase(job_id):
-        return job_id
-    
-    job_repository.finalize_job(job_id, JobStatus.PROCESSED.value)
-
-    return job_id
-
-    
-def run_structural_phase(file_path, job_id) -> bool:
-    
-    error_message = validate_structure(file_path)
-    if error_message:
-        job_repository.mark_job_as_rejected(job_id, JobStatus.REJECTED.value, error_message) 
-        return False
-
-    return True
-
-def run_business_validation_phase(job_id) -> bool:
     #TODO: Validate Header
 
+    # Trailer = file-level (fatal)
     trailer_is_invalid = validate_trailer(job_id)
     if trailer_is_invalid:
         trailer_row_id, error_code, error_message = trailer_is_invalid
-        insert_validation_error(job_id, 'FILE_STRUCTURE', error_message, trailer_row_id, error_code)
-        job_repository.mark_job_as_rejected(job_id, JobStatus.REJECTED.value, error_message) 
-        return False
+        insert_validation_error(conn, job_id, 'FILE_STRUCTURE', error_message, trailer_row_id, error_code)
+        job_repository.mark_job_as_rejected(conn, job_id, JobStatus.REJECTED.value, error_message) 
+        return {
+            "fatal": True,
+            "errors": 1,
+            "message": error_message
+        }
     
+    # Detail = record-level (non-fatal)
     errors = validate_detail(job_id)
     if errors > 0:
-        job_repository.finalize_job_with_errors(job_id, JobStatus.PROCESSED_WITH_ERRORS.value, errors, 'Detail lines with inconsistences')
-        return False
+        return {
+            "fatal": False,
+            "errors": errors,
+            "message": "Detail lines with inconsistences"
+        }
     
-    return True
+    return {
+        "fatal": False,
+        "errors": 0,
+        "message": None
+    }
+
 
 def get_job_status(job_id):
     
