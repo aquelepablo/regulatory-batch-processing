@@ -9,7 +9,7 @@ def stream_file_lines(conn, file_path: str, job_id: int):
 
     with open(file_path, 'r') as file:
         for line_number, line in enumerate(file, 1):
-            insert_raw_record(conn, job_id, line_number, line.strip(), line_parsed)
+            insert_raw_record(conn, job_id, line_number, line.strip("\r\n"), line_parsed)
 
 def stream_file_lines_buffer(conn, file_path: str, job_id: int):
     buffer = []
@@ -18,7 +18,7 @@ def stream_file_lines_buffer(conn, file_path: str, job_id: int):
     with open(file_path, 'r') as file:
         for line_number, line in enumerate(file, 1):
             buffer.append(
-                (job_id, line_number, line.strip('\n'))
+                (job_id, line_number, line.strip("\r\n"))
             )
 
             if len(buffer) >= BUFFER_SIZE:

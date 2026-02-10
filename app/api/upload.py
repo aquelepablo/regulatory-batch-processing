@@ -19,19 +19,15 @@ async def save_temp_file(file: UploadFile) -> str:
     #STORE IT IN tmp_uploads
 
     path = "./tmp_uploads/"
-    if not (os.path.exists(path)):
-        try:
-            os.mkdir(path)
-        except:
-            raise RuntimeError("Folder tmp_uploads not created")
-
+    os.makedirs(path, exist_ok=True)
     full_path = os.path.join(path, file.filename)
 
-    uploaded_file = await file.read()
-
-    with open(full_path, "wb") as f:
-        f.write(uploaded_file)
-        
+    with open(full_path, "wb") as out:
+        while True:
+            chunk = await file.read(1024 * 1024) #1 MB
+            if not chunk:
+                break
+            out.write(chunk)
     return full_path
 
 @router.get("/status/{job_id}")

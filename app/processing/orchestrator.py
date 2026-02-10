@@ -83,7 +83,7 @@ def run_business_validation_phase(conn, job_id) -> dict:
     #TODO: Validate Header
 
     # Trailer = file-level (fatal)
-    trailer_is_invalid = validate_trailer(job_id)
+    trailer_is_invalid = validate_trailer(conn, job_id)
     if trailer_is_invalid:
         trailer_row_id, error_code, error_message = trailer_is_invalid
         insert_validation_error(conn, job_id, 'FILE_STRUCTURE', error_message, trailer_row_id, error_code)
@@ -95,7 +95,7 @@ def run_business_validation_phase(conn, job_id) -> dict:
         }
     
     # Detail = record-level (non-fatal)
-    errors = validate_detail(job_id)
+    errors = validate_detail(conn, job_id)
     if errors > 0:
         return {
             "fatal": False,

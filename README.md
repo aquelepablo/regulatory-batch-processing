@@ -1,123 +1,68 @@
-# Regulatory Batch Processing System (V1)
+# Regulatory Batch Processing System (V1) - Portfolio Demo
 
-## Project Overview
+This is a portfolio V1 that demonstrates architecture, data integrity thinking, and backend workflow design.
+It is not meant for production use or full operational readiness.
 
-This project demonstrates a simplified batch processing system for ingesting and processing regulatory data files, emphasizing streaming ingestion, SQL-based validation, and an auditable, production-oriented design focused on data integrity.
+## Goal
 
-## Folder Structure:
+Show that I can design a clear, auditable batch processing system that:
 
-<pre>
-reg-batch-v1/
-│
-├── app/
-│ ├── api/ # System entry points (FastAPI endpoints)
-│ ├── processing/ # Batch orchestration and file streaming/parsing
-│ ├── persistence/ # Database access and SQL-based operations
-│ ├── domain/ # Business rules and validation logic
-│ └── main.py # Application bootstrap
-│
-├── docs/ # Sample files and documentation
-│
-├── README.md
-└── .gitignore
-</pre>
-
-## Problem Statement
-
-Many regulatory and enterprise systems still rely on large batch files to exchange and process critical data.
-Unreliable validations or memory-dependent processing of sensitive, critical files may lead to data inconsistencies,
-financial losses, or even regulatory risks.
-In this kind of processing, small errors - such as a misplaced character - are often hard to detect, difficult to trace,
-and can cause significant downstream issues.
+- receives a file via HTTP
+- validates structure before persistence
+- persists raw lines for traceability
+- runs SQL-based business validations
+- tracks job lifecycle and results
 
 ## Scope (V1)
 
-### In Scope
+In scope:
 
-1. Process large files using streaming (no full file in memory)
-2. Persist raw data for traceability and audit
-3. Execute SQL-based validations and aggregations
-4. Receive batch files via a minimal HTTP API
-5. Track processing status per job
-6. Generate a basic processing summary
-7. Perform SQL-based business validations on detail records
-8. Differentiate between fatal (file-level) and non-fatal (record-level) validation errors
+- streaming file ingestion (no full file in memory)
+- raw data persistence for auditability
+- SQL-first validation and aggregation
+- job lifecycle tracking (RECEIVED -> PROCESSING -> PROCESSED/REJECTED)
+- a minimal API surface
 
-### V1 Design Focus
+Out of scope:
 
-V1 intentionally prioritizes correctness, explicit lifecycle control, and auditability
-over raw throughput optimization or horizontal scalability.
+- retries, idempotency, parallelism
+- multiple file formats
+- rich monitoring and alerts
+- production hardening
 
-Streaming ingestion and batch inserts are implemented to avoid loading entire files
-into memory, but advanced performance techniques (e.g. COPY, parallel ingestion,
-asynchronous pipelines) are considered out of scope and deferred to future versions.
+## Design Highlights
 
-### Out of Scope
+- Job-oriented processing with explicit state transitions
+- Early file-level rejection before any data persistence
+- Raw line immutability to support audit and reprocessing
+- SQL-first validation (set-based, not row-by-row Python)
+- Simple orchestration layer, minimal business logic in code
 
-- Support for multiple file formats
-- Retry and idempotent processing
-- Richer audit and processing details
-- Advanced operational concerns
-- Extended API and monitoring capabilities
+## What Is Implemented
 
-## High-Level Architecture
+- API endpoints: `POST /upload`, `GET /status/{job_id}`
+- File structure validation (header and trailer checks)
+- Raw record persistence (batch insert with `execute_values`)
+- Business validations in SQL (detail line checks, trailer totals)
+- Job finalization and error reporting
 
-The system is designed around a controlled, job-oriented batch processing flow, where each file is handled as an explicit processing job with a well-defined lifecycle.
+## Known Limitations (Intentional for V1)
 
-Files are received through a minimal HTTP API and registered as processing jobs. Python is responsible for orchestrating the ingestion phase, performing streaming-based file reading and enforcing initial structural validations to ensure the file matches the expected layout before any business processing occurs.
+- Double file read: one pass for structural validation, one pass for persistence
+- No automated tests (deferred to V2)
+- No retry/idempotency logic
+- No async processing or queues
+- Simplified error handling and logging
 
-Raw data is persisted early in the process to guarantee traceability and auditability. Once structural validation succeeds, Python delegates business validations and aggregations to the database, favoring set-based SQL operations over row-by-row processing for consistency and performance.
+## How To Run (Optional)
 
-Validation results are recorded at both record and job levels. Python consolidates these outcomes to determine the final processing state, enabling detailed error analysis and a clear, auditable result for each processed file.
+This project is primarily for demonstration, but it can be run locally:
 
-Business validations may both validate data and persist validation errors directly in the database, returning only aggregated results to the application layer.
+1. Create a virtualenv and install dependencies:
+   `pip install -r requirements.txt`
+2. Create a `.env` based on `.env.example`
+3. Create DB schema: `docs/tables.sql`
+4. Start the app:
+   `uvicorn app.main:app --reload`
 
-The architecture intentionally prioritizes data integrity, auditability and clarity over architectural complexity or real-time processing concerns.
-
-The validation process is intentionally split into file-level (fatal) and record-level (non-fatal) validations.
-File-level inconsistencies (e.g. header/trailer mismatches) cause the entire job to be rejected, while record-level errors are accumulated and reported without interrupting processing.
-
-## Key Design Decisions
-
-- **Job-oriented processing model**: each file is treated as an explicit processing job with a well-defined lifecycle and status transitions.
-- **Raw data immutability**: all file lines (inclusing header, detail, trailer) are persisted exactly as received to support auditability and reprocessing.
-- **SQL-first business validation**: data consistency and business rules are validated using set-based SQL operations, avoiding row-by-row processing in Python.
-- **Early rejection for file-level errors**: structural and file consistency errors immediately reject the job, preventing unnecessary downstream processing.
-- **Minimal orchestration layer**: Python coordinates the workflow and lifecycle but does not implement heavy business logic.
-
-## Natural Evolutions (V2+)
-
-- Introduce record-level business validations (e.g. amount format, account checksum).
-- Externalize validation error codes and messages.
-- Support multiple file formats.
-- Add retry and idempotency controls.
-- Persist parsed/normalized records for downstream processing.
-- Improve operational metrics and monitoring.
-
-## How to Run (Local)
-
-### Requirements
-
-- Python 3.11+
-- PostgreSQL
-- pip / virtualenv
-
-### Setup
-
-1. Clone the repository
-2. Create a virtual environment and install dependencies
-3. Create a `.env` file based on `.env.example`
-4. Create the database schema using the script in `docs/tables.sql`
-5. Run the application
-
-```bash
-uvicorn app.main:app --reload
-```
-
-### Usage
-
-**POST /upload** - upload a batch file and start processing
-
-**GET /status/{job_id}** - retrieve current job status
-
-**FILE TO USE** - Use example file `docs/PAYMENTS_ACME_20250315_001.dat`
+Use the sample file in `docs/PAYMENTS_ACME_20250315_001.dat`.
