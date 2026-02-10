@@ -43,6 +43,15 @@ and can cause significant downstream issues.
 7. Perform SQL-based business validations on detail records
 8. Differentiate between fatal (file-level) and non-fatal (record-level) validation errors
 
+### V1 Design Focus
+
+V1 intentionally prioritizes correctness, explicit lifecycle control, and auditability
+over raw throughput optimization or horizontal scalability.
+
+Streaming ingestion and batch inserts are implemented to avoid loading entire files
+into memory, but advanced performance techniques (e.g. COPY, parallel ingestion,
+asynchronous pipelines) are considered out of scope and deferred to future versions.
+
 ### Out of Scope
 
 - Support for multiple file formats
