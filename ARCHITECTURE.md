@@ -34,13 +34,7 @@ This separation keeps Python focused on control flow and clarity, while delegati
 Each uploaded file follows a strict lifecycle:
 
 ```
-RECEIVED
-   ↓
-PROCESSING
-   ↓
-┌───────────────────────────┐
-↓                           ↓
-REJECTED   PROCESSED / PROCESSED_WITH_ERRORS
+RECEIVED -> PROCESSING -> REJECTED | PROCESSED | PROCESSED_WITH_ERRORS
 ```
 
 ### Lifecycle Semantics
@@ -75,22 +69,28 @@ Examples:
 - empty file
 - invalid header
 - invalid trailer
-- trailer totals inconsistent with detail records
 
 **Outcome:**  
 Any failure immediately **rejects the job** and halts processing.
 
 ---
 
-### 2. Record-Level (Non-Fatal)
+### 2. Record-Level (Fatal and Non-Fatal)
 
 Executed after raw data persistence using SQL.
 
 Examples:
 
-- invalid field formats
-- numeric conversion failures
-- business consistency rules
+- **Trailer inconsistencies - Fatal:**
+  - trailer totals inconsistent with detail records
+
+**Outcome:**  
+Processing ends and the job is finalized as `REJECTED`.
+
+- **Detail inconsistencies - Non-Fatal:**
+  - invalid field formats
+  - numeric conversion failures
+  - business consistency rules
 
 **Outcome:**  
 Errors are recorded, but processing continues and the job is finalized as `PROCESSED_WITH_ERRORS`.
@@ -102,9 +102,11 @@ Errors are recorded, but processing continues and the job is finalized as `PROCE
 - **processing_job**
   - one row per uploaded file
   - tracks lifecycle, timestamps, counters, and summary errors
+
 - **raw_record**
   - immutable storage of each file line
   - preserves original content for auditability
+
 - **validation_error**
   - records file-level and record-level issues
   - optionally linked to a specific raw record

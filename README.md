@@ -33,7 +33,7 @@ Out of scope:
 ## Design Highlights
 
 - Job-oriented processing with explicit state transitions
-- Early file-level rejection before any data persistence
+- Early file-level rejection before persistence
 - Raw line immutability to support audit and reprocessing
 - SQL-first validation (set-based, not row-by-row Python)
 - Simple orchestration layer, minimal business logic in code
@@ -45,11 +45,11 @@ Out of scope:
 - Raw record persistence (batch insert with `execute_values`)
 - Business validations in SQL (detail line checks, trailer totals)
 - Job finalization and error reporting
+- Unit and DB integration tests
 
 ## Known Limitations (Intentional for V1)
 
 - Double file read: one pass for structural validation, one pass for persistence
-- No automated tests (deferred to V2)
 - No retry/idempotency logic
 - No async processing or queues
 - Simplified error handling and logging
