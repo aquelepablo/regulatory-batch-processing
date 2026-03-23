@@ -1,66 +1,237 @@
 # Regulatory Batch Processing System (V1)
 
-## Project Overview
+![Python](https://img.shields.io/badge/Python-3.14%2B-blue)
+![FastAPI](https://img.shields.io/badge/FastAPI-API-009688)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-336791)
+![SQL](https://img.shields.io/badge/SQL-Validation%20Engine-orange)
+![Status](https://img.shields.io/badge/Status-Portfolio%20Demo-yellow)
 
-This project demonstrates a simplified batch processing system for ingesting and processing regulatory data files, emphasizing streaming ingestion, SQL-based validation, and an auditable, production-oriented design focused on data integrity.
+A portfolio backend project that demonstrates how to design an auditable batch-processing workflow using **Python, FastAPI, PostgreSQL, and SQL-first validation**.
 
-## Folder Structure:
+This project focuses on **clarity, lifecycle control, data traceability, and validation design** rather than production scale.
 
-reg-batch-v1/
-│
-├── app/
-│ ├── api/ # System entry points (FastAPI endpoints)
-│ ├── processing/ # Batch orchestration and file streaming/parsing
-│ ├── persistence/ # Database access and SQL-based operations
-│ ├── domain/ # Business rules and validation logic
-│ └── main.py # Application bootstrap
-│
-├── docs/ # Sample files and documentation
-│
-├── README.md
-└── .gitignore
+## Overview
 
-## Problem Statement
+The system receives a structured file through HTTP, validates its structure, persists raw records for traceability, executes business validations in SQL, and tracks the full job lifecycle.
 
-Many regulatory and enterprise systems still rely on large batch files to exchange and process critical data.
-Unreliable validations or memory-dependent processing of sensitive, critical files may lead to data inconsistencies,
-financial losses, or even regulatory risks.
-In this kind of processing, small errors — such as a misplaced character — are often hard to detect, difficult to trace,
-and can cause significant downstream issues.
+Core ideas demonstrated in this repository:
 
-## Scope (V1)
+- job-oriented batch processing
+- explicit lifecycle transitions
+- streaming ingestion
+- raw data persistence for auditability
+- SQL-first business validation
+- separation between orchestration and validation logic
 
-### In Scope
+## Job Lifecycle
 
-1. Process large files using streaming (no full file in memory)
-2. Persist raw data for traceability and audit
-3. Execute SQL-based validations and aggregations
-4. Receive batch files via a minimal HTTP API
-5. Track processing status per job
-6. Generate a basic processing summary
+Each uploaded file is processed as a job with explicit status transitions:
 
-### Out of Scope
+```text
+RECEIVED -> PROCESSING -> REJECTED | PROCESSED | PROCESSED_WITH_ERRORS
+```
 
-- Support for multiple file formats
-- Retry and idempotent processing
-- Richer audit and processing details
-- Advanced operational concerns
-- Extended API and monitoring capabilities
+This keeps the workflow transparent and makes failures and processing outcomes easy to audit.
 
-## High-Level Architecture
+## What This Project Implements
 
-The system is designed around a controlled, job-oriented batch processing flow, where each file is handled as an explicit processing job with a well-defined lifecycle.
+- `POST /upload` endpoint to receive a file
+- `GET /status/{job_id}` endpoint to inspect processing status
+- file-level validation for header and trailer
+- raw line persistence in PostgreSQL
+- SQL-based validation for detail and trailer consistency
+- final job status calculation
+- unit and DB integration tests
 
-Files are received through a minimal HTTP API and registered as processing jobs. Python is responsible for orchestrating the ingestion phase, performing streaming-based file reading and enforcing initial structural validations to ensure the file matches the expected layout before any business processing occurs.
+## Architecture
 
-Raw data is persisted early in the process to guarantee traceability and auditability. Once structural validation succeeds, Python delegates business validations and aggregations to the database, favoring set-based SQL operations over row-by-row processing for consistency and performance.
+Responsibilities are intentionally split between application and database layers.
 
-Validation results are recorded at both record and job levels. Python consolidates these outcomes to determine the final processing state, enabling detailed error analysis and a clear, auditable result for each processed file.
+### Python
 
-The architecture intentionally prioritizes data integrity, auditability and clarity over architectural complexity or real-time processing concerns.
+- API surface
+- orchestration
+- file streaming
+- lifecycle coordination
+- transaction flow
 
-## Key Design Decisions
+### PostgreSQL + SQL
 
-## Natural Evolutions (V2+)
+- raw data persistence
+- set-based validations
+- aggregation checks
+- validation error storage
 
-## How to Run (Local)
+This design keeps Python focused on control flow while delegating validation-heavy logic to SQL.
+
+For a deeper explanation, see [ARCHITECTURE.md](ARCHITECTURE.md).
+
+## Project Structure
+
+```text
+reg-batch-v1
+├── app
+│   ├── api
+│   │   └── upload.py
+│   ├── domain
+│   │   ├── business_validation.py
+│   │   └── structural_validation.py
+│   ├── persistence
+│   │   ├── db.py
+│   │   ├── job_repository.py
+│   │   ├── raw_record_repository.py
+│   │   ├── validation_error_repository.py
+│   │   └── sql
+│   │       ├── validate_detail.sql
+│   │       └── validate_trailer.sql
+│   ├── processing
+│   │   ├── file_reader.py
+│   │   ├── job_lifecycle.py
+│   │   └── orchestrator.py
+│   └── main.py
+├── docs
+│   ├── tables.sql
+│   ├── file_format.md
+│   └── PAYMENTS_ACME_20250315_001.dat
+├── tests
+├── requirements.txt
+└── README.md
+```
+
+## Tech Stack
+
+- Python
+- uv
+- FastAPI
+- PostgreSQL
+- SQL
+- pytest
+- python-dotenv
+- psycopg2
+
+## Running Locally
+
+### 1. Install `uv`
+
+```bash
+pip install uv
+```
+
+### 2. Sync dependencies
+
+```bash
+uv sync
+```
+
+### 3. Configure environment
+
+Create a `.env` file based on `.env.example`.
+
+### 4. Create the database schema
+
+Run the SQL in:
+
+```text
+docs/tables.sql
+```
+
+### 5. Start the API
+
+```bash
+uv run uvicorn app.main:app --reload
+```
+
+### 6. Run tests
+
+Unit tests:
+
+```bash
+uv run pytest -q tests/test_structural_validation.py
+```
+
+Integration test:
+
+```bash
+uv run pytest -q tests/test_process_file_happy_path.py
+```
+
+Before the integration test, export the dedicated test database variables:
+
+```powershell
+$env:TEST_DB_NAME="reg_batch_test"
+$env:TEST_DB_USER="<test-db-user>"
+$env:TEST_DB_PASSWORD="<test-db-password>"
+$env:TEST_DB_HOST="localhost"
+$env:TEST_DB_PORT="5432"
+```
+
+### 7. Run lint checks
+
+```bash
+uv run ruff check .
+```
+
+## Example Input
+
+A sample batch file is available at:
+
+```text
+docs/PAYMENTS_ACME_20250315_001.dat
+```
+
+## Validation Strategy
+
+The project separates validation into two categories.
+
+### File-level validation
+
+Executed before or during ingestion.
+
+Examples:
+
+- empty file
+- invalid header
+- invalid trailer
+
+These errors are fatal and cause the job to be rejected.
+
+### Record-level validation
+
+Executed after persistence using SQL.
+
+Examples:
+
+- invalid detail fields
+- numeric conversion issues
+- trailer/detail consistency mismatches
+
+These errors may either reject the job or finalize it as `PROCESSED_WITH_ERRORS`, depending on severity.
+
+## Intentional V1 Constraints
+
+This repository is intentionally scoped as a focused V1.
+
+Not implemented:
+
+- retries
+- idempotency
+- async/background processing
+- parallel ingestion
+- production-grade observability
+- operational hardening
+
+These trade-offs are intentional so the project stays centered on architecture, correctness, and auditability.
+
+## Why This Project Matters
+
+This repository was built to demonstrate backend engineering decisions commonly found in financial, regulatory, and enterprise batch systems:
+
+- explicit workflow modeling
+- audit-friendly persistence
+- SQL-driven consistency checks
+- clean separation of responsibilities
+- predictable failure semantics
+
+## License
+
+This project is available for study, adaptation, and portfolio reference.
