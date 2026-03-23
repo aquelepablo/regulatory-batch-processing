@@ -165,6 +165,12 @@ $env:TEST_DB_HOST="localhost"
 $env:TEST_DB_PORT="5432"
 ```
 
+### 7. Run lint checks
+
+```bash
+uv run ruff check .
+```
+
 ## Example Input
 
 A sample batch file is available at:
