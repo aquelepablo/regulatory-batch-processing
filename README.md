@@ -1,6 +1,6 @@
 # Regulatory Batch Processing System (V1)
 
-![Python](https://img.shields.io/badge/Python-3.12%2B-blue)
+![Python](https://img.shields.io/badge/Python-3.14%2B-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-API-009688)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-336791)
 ![SQL](https://img.shields.io/badge/SQL-Validation%20Engine-orange)
@@ -101,6 +101,7 @@ reg-batch-v1
 ## Tech Stack
 
 - Python
+- uv
 - FastAPI
 - PostgreSQL
 - SQL
@@ -110,17 +111,23 @@ reg-batch-v1
 
 ## Running Locally
 
-### 1. Install dependencies
+### 1. Install `uv`
 
 ```bash
-pip install -r requirements.txt
+pip install uv
 ```
 
-### 2. Configure environment
+### 2. Sync dependencies
+
+```bash
+uv sync
+```
+
+### 3. Configure environment
 
 Create a `.env` file based on `.env.example`.
 
-### 3. Create the database schema
+### 4. Create the database schema
 
 Run the SQL in:
 
@@ -128,10 +135,34 @@ Run the SQL in:
 docs/tables.sql
 ```
 
-### 4. Start the API
+### 5. Start the API
 
 ```bash
-uvicorn app.main:app --reload
+uv run uvicorn app.main:app --reload
+```
+
+### 6. Run tests
+
+Unit tests:
+
+```bash
+uv run pytest -q tests/test_structural_validation.py
+```
+
+Integration test:
+
+```bash
+uv run pytest -q tests/test_process_file_happy_path.py
+```
+
+Before the integration test, export the dedicated test database variables:
+
+```powershell
+$env:TEST_DB_NAME="reg_batch_test"
+$env:TEST_DB_USER="<test-db-user>"
+$env:TEST_DB_PASSWORD="<test-db-password>"
+$env:TEST_DB_HOST="localhost"
+$env:TEST_DB_PORT="5432"
 ```
 
 ## Example Input
