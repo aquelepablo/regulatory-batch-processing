@@ -1,7 +1,15 @@
+# Python-generated files
 __pycache__/
-*.pyc
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+#Others
 .env
-thinking_db.md
-DEV_STEPS.md
-MENTOR.md
 /tmp_uploads
+/docs/dev/
